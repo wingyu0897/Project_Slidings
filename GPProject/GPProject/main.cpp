@@ -1,9 +1,10 @@
 #include <Windows.h>
 #include <iostream>
+#include <conio.h>
 using namespace std;
 
-#define WIDTH	40
-#define HEIGHT	40
+#define WIDTH	25
+#define HEIGHT	25
 
 enum class MAP_TYPE
 {
@@ -11,10 +12,15 @@ enum class MAP_TYPE
 	WALL = '0',
 };
 
+void SetColor(int color, int bgcolor)
+{
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), (bgcolor << 4) | color);
+}
+
 void CursorView()
 {
 	CONSOLE_CURSOR_INFO cursorInfo = { 0, };
-	cursorInfo.dwSize = 1; //Ä¿¼­ ±½±â (1 ~ 100)
+	cursorInfo.dwSize = 50; //Ä¿¼­ ±½±â (1 ~ 100)
 	cursorInfo.bVisible = FALSE; //Ä¿¼­ Visible TRUE(º¸ÀÓ) FALSE(¼û±è)
 	SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &cursorInfo);
 }
@@ -32,8 +38,11 @@ POINT player{ WIDTH / 2, HEIGHT / 2 - 1 };
 POINT mainPath{ WIDTH / 2, 0 };
 POINT prevPath{ WIDTH / 2, 0 };
 bool a = false;
+int spawnRate = 250;
 
 clock_t t;
+
+void Move(PPOINT newPos, int x = 0, int y = 0);
 
 void Init();
 void Update();
@@ -94,24 +103,47 @@ void Update()
 {
 	POINT newPos = player;
 
-	if (GetAsyncKeyState(VK_UP) & 0x8000)
-		newPos.y--;
-	if (GetAsyncKeyState(VK_DOWN) & 0x8000)
-		newPos.y++;
-	if (GetAsyncKeyState(VK_LEFT) & 0x8000)
-		newPos.x--;
-	if (GetAsyncKeyState(VK_RIGHT) & 0x8000)
-		newPos.x++;
-
-	newPos.x = newPos.x < 0 ? 0 : newPos.x >= WIDTH ? WIDTH - 1 : newPos.x;
-	newPos.y = newPos.y < 0 ? 0 : newPos.y >= HEIGHT ? HEIGHT - 1 : newPos.y;
-
-	if (map[newPos.y][newPos.x] != MAP_TYPE::WALL)
+	if (_kbhit())
 	{
-		player = newPos;
+		char input = _getch();
+
+		switch (input)
+		{
+		case 72:
+			Move(&newPos, 0, -1);
+			break;
+		case 80:
+			Move(&newPos, 0, 1);
+			break;
+		case 75:
+			Move(&newPos, -1, 0);
+			break;
+		case 77:
+			Move(&newPos, 1, 0);
+			break;
+		}
 	}
 
-	if (clock() - t < 10)
+	//if (GetAsyncKeyState(VK_UP) & 0x8000)
+	//{
+	//	Move(&newPos, 0, -1);
+	//}
+	//if (GetAsyncKeyState(VK_DOWN) & 0x8000)
+	//{
+	//	Move(&newPos, 0, 1);
+	//}
+	//if (GetAsyncKeyState(VK_LEFT) & 0x8000)
+	//{
+	//	Move(&newPos, -1, 0);
+	//}
+	//if (GetAsyncKeyState(VK_RIGHT) & 0x8000)
+	//{
+	//	Move(&newPos, 1, 0);
+	//}
+
+	player = newPos;
+
+	if (clock() - t < spawnRate)
 		return;
 
 	t = clock();
@@ -145,6 +177,8 @@ void Update()
 		}
 	}
 	player.y++;
+	spawnRate -= 1;
+	spawnRate = spawnRate <= 150 ? 150 : spawnRate;
 }
 
 void Render()
@@ -155,12 +189,23 @@ void Render()
 	{
 		for (int x = 0; x < WIDTH; ++x)
 		{
+			SetColor(0, 7);
+
 			if (player.y == y && player.x == x)
-				cout << "£À";
+			{
+				SetColor(15, 0);
+				cout << "¡ß";
+			}
 			else if (map[y][x] == MAP_TYPE::WALL)
-				cout << "¡á";
-			else if (map[y][x] == MAP_TYPE::ROAD)
+			{
+				SetColor(15, 0);
 				cout << "  ";
+			}
+			else if (map[y][x] == MAP_TYPE::ROAD)
+			{
+				SetColor(0, (rand() % 5) * 4);
+				cout << "¡á";
+			}
 
 		}
 		cout << endl;
@@ -179,4 +224,22 @@ void SetNextPath()
 		mainPath.x = rand() % WIDTH;
 	}
 	a = !a;
+}
+
+void Move(PPOINT newPos, int x, int y)
+{
+	while (true)
+	{
+		newPos->x += x;
+		newPos->y += y;
+
+		if (newPos->x < 0 || newPos->y < 0 || newPos->x >= WIDTH || newPos->y >= HEIGHT || map[newPos->y][newPos->x] == MAP_TYPE::WALL)
+		{
+			newPos->x -= x;
+			newPos->y -= y;
+			break;
+		}
+	}
+
+	return;
 }
